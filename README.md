@@ -20,7 +20,10 @@ tp2_golang/
 ├── config/
 │   └── environment_vars.go     # Configuración de variables de entorno
 ├── data/
-│   └── alumnos.csv             # Datos de prueba (~10K registros)
+│   ├── alumnos.csv             # Datos de prueba (~10K registros)
+│   └── alumnos_2.5M.csv        # Archivo grande (generado localmente)
+├── utils/
+│   └── generador_csv.go        # Generador de archivos CSV masivos
 ├── internal/
 │   ├── models/
 │   │   └── alumno.go           # Modelo de datos Alumno
@@ -33,6 +36,47 @@ tp2_golang/
 ├── tests/                     # Tests unitarios
 ├── docker-compose.yml         # Configuración de Docker
 └── go.mod                     # Dependencias de Go
+```
+
+## 📁 Datos de Prueba
+
+### **Archivos CSV Disponibles:**
+
+1. **`data/alumnos.csv`** (10K registros)
+   - ✅ **Incluido en el repositorio**
+   - 📊 **10,001 registros** para pruebas rápidas
+   - 🚀 **Ideal para desarrollo y testing**
+
+2. **`data/alumnos_2.5M.csv`** (2.5M registros)
+   - ⚠️ **NO incluido en el repositorio** (archivo muy pesado)
+   - 📊 **2,500,000 registros** para pruebas de rendimiento
+   - 🔧 **Debe generarse localmente** usando el generador
+
+### **Generador de CSV Masivo**
+
+Para generar el archivo de 2.5 millones de registros:
+
+```bash
+# Ejecutar el generador
+go run utils/generador_csv.go
+```
+
+**Características del generador:**
+- 🎲 **Datos aleatorios** pero realistas
+- 📅 **Fechas de nacimiento** entre 1960-2005
+- 📅 **Fechas de ingreso** entre 2010-2024
+- 👥 **Distribución equilibrada** de géneros
+- 📝 **Números de documento** únicos
+- 🔢 **Números de legajo** secuenciales
+
+**Progreso del generador:**
+```
+Generados 100000 alumnos...
+Generados 200000 alumnos...
+Generados 300000 alumnos...
+...
+Generados 2500000 alumnos...
+¡Archivo CSV generado con éxito!
 ```
 
 ## 🚀 Estrategias Implementadas
@@ -103,9 +147,24 @@ go mod download
 
 ## 🏃‍♂️ Ejecución
 
+### **Preparación de Datos:**
+
+```bash
+# Para pruebas rápidas (10K registros)
+# El archivo data/alumnos.csv ya está incluido
+
+# Para pruebas de rendimiento (2.5M registros)
+go run utils/generador_csv.go
+```
+
 ### **Ejecutar la aplicación:**
 
 ```bash
+# Con datos pequeños (10K registros)
+go run cmd/main.go
+
+# Con datos grandes (2.5M registros)
+# Primero generar el archivo, luego ejecutar
 go run cmd/main.go
 ```
 
@@ -124,8 +183,7 @@ go test -cover ./...
 
 ## 📈 Resultados Esperados
 
-La aplicación ejecutará automáticamente todas las estrategias y mostrará:
-
+### **Con 10K registros:**
 ```
 🚀 Iniciando carga masiva de alumnos...
 =====================================
@@ -151,6 +209,24 @@ Paralelo (8 goroutines, 500 registros)  0.7s           ✅ OK
 
 🏆 Estrategia más rápida: Paralelo (8 goroutines, 500 registros) (0.7s)
 📊 Velocidad: 14287.14 registros/segundo
+```
+
+### **Con 2.5M registros:**
+```
+🚀 Iniciando carga masiva de alumnos...
+=====================================
+
+🧹 Limpiando tabla de alumnos...
+📖 Cargando datos del archivo CSV...
+✅ Cargados 2500000 alumnos del CSV
+
+🔄 Ejecutando: Batch (1000 registros)
+   Inserción por lotes de 1000 registros
+   ✅ Completado en 3m 45s
+   📊 Registros insertados: 2500000
+
+🏆 Estrategia más rápida: Paralelo (8 goroutines, 1000 registros) (2m 15s)
+📊 Velocidad: 18518.52 registros/segundo
 ```
 
 ## 🧪 Tests
@@ -241,6 +317,24 @@ ls -la .env
 ```bash
 # Dar permisos de ejecución
 chmod +x cmd/main.go
+```
+
+### **Archivo CSV no encontrado:**
+```bash
+# Verificar que existe el archivo
+ls -la data/alumnos.csv
+
+# Si no existe, generar el archivo grande
+go run utils/generador_csv.go
+```
+
+### **Memoria insuficiente para 2.5M registros:**
+```bash
+# Aumentar memoria disponible para Go
+export GOMEMLIMIT=4GiB
+
+# O ejecutar con más memoria
+go run -gcflags=-m cmd/main.go
 ```
 
 ## 📝 Licencia
