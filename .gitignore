@@ -11,3 +11,4 @@
 .vscode/
 
 .env
+/data/alumnos_2.5M.csv
