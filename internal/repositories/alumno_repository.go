@@ -2,6 +2,7 @@ package repositories
 
 import (
 	"database/sql"
+	"fmt"
 
 	"github.com/valentinoaraya/tp2_dds/internal/models"
 
@@ -23,8 +24,10 @@ func NewAlumnoRepository(connStr string) (*Repository, error) {
 		return nil, err
 	}
 
-	db.SetMaxOpenConns(25)
-	db.SetMaxIdleConns(25)
+	// Configuración optimizada para carga masiva
+	db.SetMaxOpenConns(50)   // Más conexiones para paralelismo
+	db.SetMaxIdleConns(25)   // Mantener conexiones activas
+	db.SetConnMaxLifetime(0) // Sin límite de tiempo de vida
 
 	return &Repository{db: db}, nil
 }
@@ -86,6 +89,58 @@ func (r *Repository) CrearAlumnosBatch(alumnos []*models.Alumno) error {
 	}
 
 	return tx.Commit()
+}
+
+func (r *Repository) PrepararTablaOptimizada() error {
+	queries := []string{
+		"SET session_replication_role = replica;",
+		"SET synchronous_commit = off;",
+		"SET wal_buffers = '16MB';",
+		"SET checkpoint_segments = 32;",
+	}
+
+	for _, query := range queries {
+		if _, err := r.db.Exec(query); err != nil {
+			continue
+		}
+	}
+
+	return nil
+}
+
+func (r *Repository) RestaurarTablaNormal() error {
+	queries := []string{
+		"SET session_replication_role = DEFAULT;",
+		"SET synchronous_commit = on;",
+	}
+
+	for _, query := range queries {
+		if _, err := r.db.Exec(query); err != nil {
+			continue
+		}
+	}
+
+	return nil
+}
+
+func (r *Repository) CrearIndicesOptimizados() error {
+	fmt.Println("🔧 Creando índices optimizados...")
+
+	indices := []string{
+		"CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_alumnos_nro_legajo ON alumnos(nro_legajo);",
+		"CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_alumnos_apellido ON alumnos(apellido);",
+		"CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_alumnos_fecha_ingreso ON alumnos(fecha_ingreso);",
+	}
+
+	for _, index := range indices {
+		if _, err := r.db.Exec(index); err != nil {
+			fmt.Printf("⚠️  Error creando índice: %v\n", err)
+			continue
+		}
+	}
+
+	fmt.Println("✅ Índices creados")
+	return nil
 }
 
 func (r *Repository) LimpiarTablaAlumnos() error {

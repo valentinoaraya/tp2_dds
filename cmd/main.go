@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"runtime"
 	"strings"
 	"time"
 
@@ -15,6 +16,9 @@ func main() {
 
 	fmt.Println("🚀 Iniciando carga masiva de alumnos...")
 	fmt.Println("=====================================")
+	fmt.Printf("💻 CPU Cores disponibles: %d\n", runtime.NumCPU())
+	fmt.Printf("🧠 Memoria disponible: %d MB\n", getMemoryInfo())
+	fmt.Println()
 
 	repo, err := repositories.NewAlumnoRepository(config.Url_connection)
 	if err != nil {
@@ -24,59 +28,60 @@ func main() {
 
 	service := services.NewAlumnoService(repo)
 
-	fmt.Println("🧹 Limpiando tabla de alumnos...")
-	if err := repo.LimpiarTablaAlumnos(); err != nil {
-		log.Fatalf("Error limpiando tabla: %v", err)
+	// Preparar base de datos para carga masiva
+	fmt.Println("🔧 Preparando base de datos para carga masiva...")
+	if err := repo.PrepararTablaOptimizada(); err != nil {
+		log.Printf("⚠️  Advertencia al optimizar BD: %v", err)
 	}
 
-	fmt.Println("📖 Cargando datos del archivo CSV...")
-	alumnos, err := service.ObtenerAlumnosDesdeCSV("data/alumnos.csv")
-	if err != nil {
-		log.Fatalf("Error cargando CSV: %v", err)
-	}
-
-	fmt.Printf("✅ Cargados %d alumnos del CSV\n", len(alumnos))
-	fmt.Println()
-
+	// Estrategias optimizadas para 2.5M registros
 	estrategias := []struct {
 		nombre      string
 		funcion     func() error
 		descripcion string
 	}{
 		{
-			nombre: "Batch (100 registros)",
+			nombre: "Streaming Ultra-Rápido (16 workers, 5000 batch)",
 			funcion: func() error {
-				return service.CargarAlumnosBatch(alumnos, 100)
+				return service.CargarAlumnosStreaming("data/alumnos.csv", 5000, 16)
 			},
-			descripcion: "Inserción por lotes de 100 registros",
+			descripcion: "Carga streaming con 16 workers y batch de 5000",
 		},
 		{
-			nombre: "Batch (500 registros)",
+			nombre: "Streaming Conservador (8 workers, 2000 batch)",
 			funcion: func() error {
-				return service.CargarAlumnosBatch(alumnos, 500)
+				return service.CargarAlumnosStreaming("data/alumnos.csv", 2000, 8)
 			},
-			descripcion: "Inserción por lotes de 500 registros",
+			descripcion: "Carga streaming con 8 workers y batch de 2000",
+		},
+		{
+			nombre: "Chunked Paralelo (100k chunks, 12 workers)",
+			funcion: func() error {
+				return service.CargarAlumnosChunked("data/alumnos.csv", 100000, 2000, 12)
+			},
+			descripcion: "Procesamiento por chunks de 100k con 12 workers",
 		},
 		{
 			nombre: "Batch (1000 registros)",
 			funcion: func() error {
+				alumnos, err := service.ObtenerAlumnosDesdeCSV("data/alumnos.csv")
+				if err != nil {
+					return err
+				}
 				return service.CargarAlumnosBatch(alumnos, 1000)
 			},
-			descripcion: "Inserción por lotes de 1000 registros",
-		},
-		{
-			nombre: "Paralelo (4 goroutines, 500 registros)",
-			funcion: func() error {
-				return service.CargarAlumnosParalelo(alumnos, 500, 4)
-			},
-			descripcion: "Inserción paralela con 4 goroutines",
+			descripcion: "Inserción por lotes de 1000 registros (método original)",
 		},
 		{
 			nombre: "Paralelo (8 goroutines, 500 registros)",
 			funcion: func() error {
+				alumnos, err := service.ObtenerAlumnosDesdeCSV("data/alumnos.csv")
+				if err != nil {
+					return err
+				}
 				return service.CargarAlumnosParalelo(alumnos, 500, 8)
 			},
-			descripcion: "Inserción paralela con 8 goroutines",
+			descripcion: "Inserción paralela con 8 goroutines (método original)",
 		},
 	}
 
@@ -85,6 +90,7 @@ func main() {
 		tiempo      time.Duration
 		descripcion string
 		error       error
+		registros   int
 	}, 0, len(estrategias))
 
 	for _, estrategia := range estrategias {
@@ -110,11 +116,13 @@ func main() {
 			tiempo      time.Duration
 			descripcion string
 			error       error
+			registros   int
 		}{
 			nombre:      estrategia.nombre,
 			tiempo:      duracion,
 			descripcion: estrategia.descripcion,
 			error:       err,
+			registros:   cantidad,
 		})
 
 		if err != nil {
@@ -122,51 +130,78 @@ func main() {
 		} else {
 			fmt.Printf("   ✅ Completado en %v\n", duracion)
 			fmt.Printf("   📊 Registros insertados: %d\n", cantidad)
+			if duracion.Seconds() > 0 {
+				rate := float64(cantidad) / duracion.Seconds()
+				fmt.Printf("   ⚡ Velocidad: %.0f registros/segundo\n", rate)
+			}
 		}
 		fmt.Println()
 	}
 
+	// Restaurar configuración normal de BD
+	fmt.Println("🔧 Restaurando configuración normal de BD...")
+	if err := repo.RestaurarTablaNormal(); err != nil {
+		log.Printf("⚠️  Advertencia al restaurar BD: %v", err)
+	}
+
+	// Crear índices optimizados
+	fmt.Println("🔧 Creando índices optimizados...")
+	if err := repo.CrearIndicesOptimizados(); err != nil {
+		log.Printf("⚠️  Error creando índices: %v", err)
+	}
+
 	fmt.Println("📈 RESUMEN DE RESULTADOS")
 	fmt.Println("========================")
-	fmt.Printf("%-40s %-15s %-10s\n", "Estrategia", "Tiempo", "Estado")
-	fmt.Println(strings.Repeat("-", 70))
+	fmt.Printf("%-50s %-15s %-15s %-10s\n", "Estrategia", "Tiempo", "Registros", "Estado")
+	fmt.Println(strings.Repeat("-", 100))
+
+	var mejorTiempo time.Duration
+	var mejorEstrategia string
+	var mejorRegistros int
+	primerResultado := true
 
 	for _, resultado := range resultados {
 		estado := "✅ OK"
 		if resultado.error != nil {
 			estado = "❌ Error"
+		} else if primerResultado || resultado.tiempo < mejorTiempo {
+			mejorTiempo = resultado.tiempo
+			mejorEstrategia = resultado.nombre
+			mejorRegistros = resultado.registros
+			primerResultado = false
 		}
-		fmt.Printf("%-40s %-15s %-10s\n",
+
+		fmt.Printf("%-50s %-15s %-15d %-10s\n",
 			resultado.nombre,
 			resultado.tiempo.String(),
-			estado)
-	}
-
-	var mejorTiempo time.Duration
-	var mejorEstrategia string
-	primerResultado := true
-
-	for _, resultado := range resultados {
-		if resultado.error == nil {
-			if primerResultado || resultado.tiempo < mejorTiempo {
-				mejorTiempo = resultado.tiempo
-				mejorEstrategia = resultado.nombre
-				primerResultado = false
-			}
-		}
+			resultado.registros,
+			estado,
+		)
 	}
 
 	if !primerResultado {
 		fmt.Println()
-		fmt.Printf("🏆 Estrategia más rápida: %s (%v)\n", mejorEstrategia, mejorTiempo)
-		fmt.Printf("📊 Velocidad: %.2f registros/segundo\n", float64(len(alumnos))/mejorTiempo.Seconds())
+		fmt.Printf("🏆 Estrategia más rápida: %s\n", mejorEstrategia)
+		fmt.Printf("⏱️  Tiempo: %v\n", mejorTiempo)
+		fmt.Printf("📊 Registros: %d\n", mejorRegistros)
+		if mejorTiempo.Seconds() > 0 {
+			rate := float64(mejorRegistros) / mejorTiempo.Seconds()
+			fmt.Printf("⚡ Velocidad: %.0f registros/segundo\n", rate)
+		}
 	}
 
 	fmt.Println()
-	fmt.Println("🎯 Próximos pasos para escalar a 2.5M registros:")
-	fmt.Println("   1. Ajustar tamaño de batch según resultados")
-	fmt.Println("   2. Optimizar número de goroutines")
-	fmt.Println("   3. Considerar particionamiento de tablas")
-	fmt.Println("   4. Evaluar índices y configuración de PostgreSQL")
-	fmt.Println("   5. Implementar carga incremental")
+	fmt.Println("🎯 Recomendaciones para producción:")
+	fmt.Println("   1. Usar la estrategia más rápida según resultados")
+	fmt.Println("   2. Monitorear uso de memoria y CPU")
+	fmt.Println("   3. Ajustar configuración de PostgreSQL según hardware")
+	fmt.Println("   4. Considerar particionamiento para tablas > 10M registros")
+	fmt.Println("   5. Implementar carga incremental para actualizaciones")
+}
+
+// getMemoryInfo obtiene información básica de memoria (simplificado)
+func getMemoryInfo() int {
+	var m runtime.MemStats
+	runtime.ReadMemStats(&m)
+	return int(m.Sys / 1024 / 1024) // MB
 }
