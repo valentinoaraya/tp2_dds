@@ -14,6 +14,8 @@ import (
 
 func main() {
 
+	rutaArchivo := "data/alumnos_2.5M.csv"
+
 	fmt.Println("🚀 Iniciando carga masiva de alumnos...")
 	fmt.Println("=====================================")
 	fmt.Printf("💻 CPU Cores disponibles: %d\n", runtime.NumCPU())
@@ -43,28 +45,28 @@ func main() {
 		{
 			nombre: "Streaming Ultra-Rápido (16 workers, 5000 batch)",
 			funcion: func() error {
-				return service.CargarAlumnosStreaming("data/alumnos.csv", 5000, 16)
+				return service.CargarAlumnosStreaming(rutaArchivo, 5000, 16)
 			},
 			descripcion: "Carga streaming con 16 workers y batch de 5000",
 		},
 		{
 			nombre: "Streaming Conservador (8 workers, 2000 batch)",
 			funcion: func() error {
-				return service.CargarAlumnosStreaming("data/alumnos.csv", 2000, 8)
+				return service.CargarAlumnosStreaming(rutaArchivo, 2000, 8)
 			},
 			descripcion: "Carga streaming con 8 workers y batch de 2000",
 		},
 		{
 			nombre: "Chunked Paralelo (100k chunks, 12 workers)",
 			funcion: func() error {
-				return service.CargarAlumnosChunked("data/alumnos.csv", 100000, 2000, 12)
+				return service.CargarAlumnosChunked(rutaArchivo, 100000, 2000, 12)
 			},
 			descripcion: "Procesamiento por chunks de 100k con 12 workers",
 		},
 		{
 			nombre: "Batch (1000 registros)",
 			funcion: func() error {
-				alumnos, err := service.ObtenerAlumnosDesdeCSV("data/alumnos.csv")
+				alumnos, err := service.ObtenerAlumnosDesdeCSV(rutaArchivo)
 				if err != nil {
 					return err
 				}
@@ -75,7 +77,7 @@ func main() {
 		{
 			nombre: "Paralelo (8 goroutines, 500 registros)",
 			funcion: func() error {
-				alumnos, err := service.ObtenerAlumnosDesdeCSV("data/alumnos.csv")
+				alumnos, err := service.ObtenerAlumnosDesdeCSV(rutaArchivo)
 				if err != nil {
 					return err
 				}
