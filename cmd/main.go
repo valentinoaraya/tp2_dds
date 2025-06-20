@@ -44,39 +44,46 @@ func main() {
 		descripcion string
 	}{
 		{
-			nombre: "Batch (100 registros)",
+			nombre: "Persitencia con Múltiples Inserts (Batch de 1000)",
 			funcion: func() error {
-				return service.CargarAlumnosBatch(alumnos, 100)
+				return service.CargarAlumnosBatch(alumnos, 1000, "multiplesInserts")
 			},
-			descripcion: "Inserción por lotes de 100 registros",
+			descripcion: "Inserción por Batch de 1000 registros con múltiples inserts",
 		},
 		{
-			nombre: "Batch (500 registros)",
+			nombre: "Persistencia con Inserción por Lotes (Batch de 1000)",
 			funcion: func() error {
-				return service.CargarAlumnosBatch(alumnos, 500)
+				return service.CargarAlumnosBatch(alumnos, 1000, "unInsert")
 			},
-			descripcion: "Inserción por lotes de 500 registros",
+			descripcion: "Inserción por Batch de 1000 registros con un solo insert",
 		},
 		{
-			nombre: "Batch (1000 registros)",
+			nombre: "Persistencia con COPY (Batch de 1000)",
 			funcion: func() error {
-				return service.CargarAlumnosBatch(alumnos, 1000)
+				return service.CargarAlumnosBatch(alumnos, 1000, "copy")
 			},
-			descripcion: "Inserción por lotes de 1000 registros",
+			descripcion: "Inserción por Batch de 1000 registros con COPY",
 		},
 		{
-			nombre: "Paralelo (4 goroutines, 500 registros)",
+			nombre: "Paralelo (8 goroutines, 1000 registros) Usando Múltiples Inserts",
 			funcion: func() error {
-				return service.CargarAlumnosParalelo(alumnos, 500, 4)
+				return service.CargarAlumnosParalelo(alumnos, 1000, 8, "multiplesInserts")
 			},
-			descripcion: "Inserción paralela con 4 goroutines",
+			descripcion: "Inserción paralela con 8 goroutines utilizando múltiples inserts",
 		},
 		{
-			nombre: "Paralelo (8 goroutines, 500 registros)",
+			nombre: "Paralelo (8 goroutines, 1000 registros) Usando Un Solo Insert",
 			funcion: func() error {
-				return service.CargarAlumnosParalelo(alumnos, 500, 8)
+				return service.CargarAlumnosParalelo(alumnos, 1000, 8, "unInsert")
 			},
-			descripcion: "Inserción paralela con 8 goroutines",
+			descripcion: "Inserción paralela con 8 goroutines utilizando un solo insert",
+		},
+		{
+			nombre: "Paralelo (8 goroutines, 1000 registros) Usando COPY",
+			funcion: func() error {
+				return service.CargarAlumnosParalelo(alumnos, 1000, 8, "copy")
+			},
+			descripcion: "Inserción paralela con 8 goroutines utilizando COPY",
 		},
 	}
 
@@ -139,19 +146,32 @@ func main() {
 		fmt.Printf("%-40s %-15s %-10s\n",
 			resultado.nombre,
 			resultado.tiempo.String(),
-			estado)
+			estado,
+		)
 	}
 
 	var mejorTiempo time.Duration
 	var mejorEstrategia string
+	var segundoMejorTiempo time.Duration
+	var segundaMejorEstrategia string
 	primerResultado := true
+	segundoResultado := true
 
 	for _, resultado := range resultados {
 		if resultado.error == nil {
 			if primerResultado || resultado.tiempo < mejorTiempo {
+				if !primerResultado {
+					segundoMejorTiempo = mejorTiempo
+					segundaMejorEstrategia = mejorEstrategia
+					segundoResultado = false
+				}
 				mejorTiempo = resultado.tiempo
 				mejorEstrategia = resultado.nombre
 				primerResultado = false
+			} else if segundoResultado || resultado.tiempo < segundoMejorTiempo {
+				segundoMejorTiempo = resultado.tiempo
+				segundaMejorEstrategia = resultado.nombre
+				segundoResultado = false
 			}
 		}
 	}
@@ -160,13 +180,12 @@ func main() {
 		fmt.Println()
 		fmt.Printf("🏆 Estrategia más rápida: %s (%v)\n", mejorEstrategia, mejorTiempo)
 		fmt.Printf("📊 Velocidad: %.2f registros/segundo\n", float64(len(alumnos))/mejorTiempo.Seconds())
+		fmt.Println()
 	}
 
-	fmt.Println()
-	fmt.Println("🎯 Próximos pasos para escalar a 2.5M registros:")
-	fmt.Println("   1. Ajustar tamaño de batch según resultados")
-	fmt.Println("   2. Optimizar número de goroutines")
-	fmt.Println("   3. Considerar particionamiento de tablas")
-	fmt.Println("   4. Evaluar índices y configuración de PostgreSQL")
-	fmt.Println("   5. Implementar carga incremental")
+	if !segundoResultado {
+		fmt.Printf("🥈 Segunda estrategia más rápida: %s (%v)\n", segundaMejorEstrategia, segundoMejorTiempo)
+		fmt.Printf("📊 Velocidad: %.2f registros/segundo\n", float64(len(alumnos))/segundoMejorTiempo.Seconds())
+		fmt.Println()
+	}
 }

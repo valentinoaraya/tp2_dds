@@ -100,7 +100,7 @@ func (s *AlumnoService) ParsearAlumno(registro []string) (*models.Alumno, error)
 	}, nil
 }
 
-func (s *AlumnoService) CargarAlumnosBatch(alumnos []*models.Alumno, tamanoBatch int) error {
+func (s *AlumnoService) CargarAlumnosBatch(alumnos []*models.Alumno, tamanoBatch int, tipoPersistencia string) error {
 	for i := 0; i < len(alumnos); i += tamanoBatch {
 		fin := i + tamanoBatch
 		if fin > len(alumnos) {
@@ -108,14 +108,28 @@ func (s *AlumnoService) CargarAlumnosBatch(alumnos []*models.Alumno, tamanoBatch
 		}
 
 		batch := alumnos[i:fin]
-		if err := s.repo.CrearAlumnosBatch(batch); err != nil {
-			return fmt.Errorf("error en batch %d-%d: %v", i, fin-1, err)
+
+		if tipoPersistencia == "multiplesInserts" {
+			if err := s.repo.CrearAlumnosBatchConMultiplesInserts(batch); err != nil {
+				return fmt.Errorf("error en batch %d-%d: %v", i, fin-1, err)
+			}
+		} else if tipoPersistencia == "unInsert" {
+			if err := s.repo.CrearAlumnosBatchConUnInsert(batch); err != nil {
+				return fmt.Errorf("error en batch %d-%d: %v", i, fin-1, err)
+			}
+		} else if tipoPersistencia == "copy" {
+			if err := s.repo.CrearAlumnosBatchConCopy(batch); err != nil {
+				return fmt.Errorf("error en batch %d-%d: %v", i, fin-1, err)
+			}
+		} else {
+			return fmt.Errorf("tipo de persistencia no soportado: %s", tipoPersistencia)
 		}
+
 	}
 	return nil
 }
 
-func (s *AlumnoService) CargarAlumnosParalelo(alumnos []*models.Alumno, tamanoBatch int, numGoroutines int) error {
+func (s *AlumnoService) CargarAlumnosParalelo(alumnos []*models.Alumno, tamanoBatch int, numGoroutines int, tipoPersistencia string) error {
 	if numGoroutines <= 0 {
 		numGoroutines = 4
 	}
@@ -139,7 +153,7 @@ func (s *AlumnoService) CargarAlumnosParalelo(alumnos []*models.Alumno, tamanoBa
 		go func(start, end int) {
 			defer wg.Done()
 			chunk := alumnos[start:end]
-			if err := s.CargarAlumnosBatch(chunk, tamanoBatch); err != nil {
+			if err := s.CargarAlumnosBatch(chunk, tamanoBatch, tipoPersistencia); err != nil {
 				errChan <- fmt.Errorf("error en goroutine %d-%d: %v", start, end, err)
 			}
 		}(start, end)

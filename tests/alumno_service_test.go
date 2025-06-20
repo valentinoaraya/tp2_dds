@@ -70,48 +70,61 @@ func TestAlumnoService(t *testing.T) {
 	})
 
 	t.Run("Cargar un batch de alumnos", func(t *testing.T) {
-		err := service.CargarAlumnosBatch(Alumnos, len(Alumnos))
+		var metodosPersistencia = []string{"multiplesInserts", "unInsert", "copy"}
 
-		if err != nil {
-			t.Errorf("Error al cargar batch de alumnos: %v", err)
-		}
+		for _, metodo := range metodosPersistencia {
+			t.Run("Cargar alumnos con "+metodo, func(t *testing.T) {
+				err := service.CargarAlumnosBatch(Alumnos, len(Alumnos), metodo)
 
-		cantidad, err := repo.ObtenerCantidadAlumnos()
-		if err != nil {
-			t.Errorf("Error al obtener cantidad de alumnos: %v", err)
-		}
+				if err != nil {
+					t.Errorf("Error al cargar alumnos con %s: %v", metodo, err)
+				}
 
-		esperado := len(Alumnos)
-		if cantidad != esperado {
-			t.Errorf("Se esperaban %d alumnos, pero se encontraron %d", esperado, cantidad)
-		}
+				cantidad, err := repo.ObtenerCantidadAlumnos()
+				if err != nil {
+					t.Errorf("Error al obtener cantidad de alumnos: %v", err)
+				}
 
-		err = repo.LimpiarTablaAlumnos()
-		if err != nil {
-			t.Errorf("Error al limpiar la tabla: %v", err)
+				esperado := len(Alumnos)
+				if cantidad != esperado {
+					t.Errorf("Se esperaban %d alumnos, pero se encontraron %d", esperado, cantidad)
+				}
+
+				err = repo.LimpiarTablaAlumnos()
+				if err != nil {
+					t.Errorf("Error al limpiar la tabla: %v", err)
+				}
+			})
 		}
 	})
 
 	t.Run("Cargar alumnos en paralelos", func(t *testing.T) {
-		err := service.CargarAlumnosParalelo(Alumnos, 2, 2)
 
-		if err != nil {
-			t.Errorf("Ocurrió un error al cargar alumnos en paralelo: %v", err)
-		}
+		var metodosPersistencia = []string{"multiplesInserts", "unInsert", "copy"}
 
-		cantidad, err := repo.ObtenerCantidadAlumnos()
-		if err != nil {
-			t.Errorf("Error al obtener cantidad de alumnos: %v", err)
-		}
+		for _, metodo := range metodosPersistencia {
+			t.Run("Cargar alumnos con "+metodo, func(t *testing.T) {
+				err := service.CargarAlumnosParalelo(Alumnos, len(Alumnos), 4, metodo)
 
-		esperado := len(Alumnos)
-		if cantidad != esperado {
-			t.Errorf("Se esperaban %d alumnos, pero se encontraron %d", esperado, cantidad)
-		}
+				if err != nil {
+					t.Errorf("Error al cargar alumnos con %s: %v", metodo, err)
+				}
 
-		err = repo.LimpiarTablaAlumnos()
-		if err != nil {
-			t.Errorf("Error al limpiar la tabla: %v", err)
+				cantidad, err := repo.ObtenerCantidadAlumnos()
+				if err != nil {
+					t.Errorf("Error al obtener cantidad de alumnos: %v", err)
+				}
+
+				esperado := len(Alumnos)
+				if cantidad != esperado {
+					t.Errorf("Se esperaban %d alumnos, pero se encontraron %d", esperado, cantidad)
+				}
+
+				err = repo.LimpiarTablaAlumnos()
+				if err != nil {
+					t.Errorf("Error al limpiar la tabla: %v", err)
+				}
+			})
 		}
 	})
 }

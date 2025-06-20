@@ -37,10 +37,54 @@ func TestAlumnoRepository(t *testing.T) {
 		}
 	})
 
-	t.Run("Inserta múltiples alumnos en un solo batch", func(t *testing.T) {
-		err = repo.CrearAlumnosBatch(Alumnos)
+	t.Run("Recibe una lista de alumnos e inserta uno por uno con INSERT", func(t *testing.T) {
+		err = repo.CrearAlumnosBatchConMultiplesInserts(Alumnos)
 		if err != nil {
-			t.Errorf("Error al crear alumnos en batch: %v", err)
+			t.Errorf("Error al insertar alumnos con Múltiples INSERTS: %v", err)
+		}
+
+		cantidad, err := repo.ObtenerCantidadAlumnos()
+		if err != nil {
+			t.Errorf("Error al obtener cantidad de alumnos: %v", err)
+		}
+
+		esperado := len(Alumnos)
+		if cantidad != esperado {
+			t.Errorf("Se esperaban %d alumnos, pero se encontraron %d", esperado, cantidad)
+		}
+
+		err = repo.LimpiarTablaAlumnos()
+		if err != nil {
+			t.Errorf("Error al limpiar la tabla: %v", err)
+		}
+	})
+
+	t.Run("Recibe una lista de alumnos y los inserta con una sola consulta INSERT", func(t *testing.T) {
+		err = repo.CrearAlumnosBatchConUnInsert(Alumnos)
+		if err != nil {
+			t.Errorf("Error al insertar alumnos con un solo INSERT: %v", err)
+		}
+
+		cantidad, err := repo.ObtenerCantidadAlumnos()
+		if err != nil {
+			t.Errorf("Error al obtener cantidad de alumnos: %v", err)
+		}
+
+		esperado := len(Alumnos)
+		if cantidad != esperado {
+			t.Errorf("Se esperaban %d alumnos, pero se encontraron %d", esperado, cantidad)
+		}
+
+		err = repo.LimpiarTablaAlumnos()
+		if err != nil {
+			t.Errorf("Error al limpiar la tabla: %v", err)
+		}
+	})
+
+	t.Run("Recibe una lista de alumnos y los inserta con COPY", func(t *testing.T) {
+		err = repo.CrearAlumnosBatchConCopy(Alumnos)
+		if err != nil {
+			t.Errorf("Error al insertar alumnos con COPY: %v", err)
 		}
 
 		cantidad, err := repo.ObtenerCantidadAlumnos()
