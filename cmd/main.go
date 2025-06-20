@@ -49,42 +49,6 @@ func main() {
 			},
 			descripcion: "Carga streaming con 16 workers y batch de 5000",
 		},
-		{
-			nombre: "Streaming Conservador (8 workers, 2000 batch)",
-			funcion: func() error {
-				return service.CargarAlumnosStreaming(rutaArchivo, 2000, 8)
-			},
-			descripcion: "Carga streaming con 8 workers y batch de 2000",
-		},
-		{
-			nombre: "Chunked Paralelo (100k chunks, 12 workers)",
-			funcion: func() error {
-				return service.CargarAlumnosChunked(rutaArchivo, 100000, 2000, 12)
-			},
-			descripcion: "Procesamiento por chunks de 100k con 12 workers",
-		},
-		{
-			nombre: "Batch (1000 registros)",
-			funcion: func() error {
-				alumnos, err := service.ObtenerAlumnosDesdeCSV(rutaArchivo)
-				if err != nil {
-					return err
-				}
-				return service.CargarAlumnosBatch(alumnos, 1000)
-			},
-			descripcion: "Inserción por lotes de 1000 registros (método original)",
-		},
-		{
-			nombre: "Paralelo (8 goroutines, 500 registros)",
-			funcion: func() error {
-				alumnos, err := service.ObtenerAlumnosDesdeCSV(rutaArchivo)
-				if err != nil {
-					return err
-				}
-				return service.CargarAlumnosParalelo(alumnos, 500, 8)
-			},
-			descripcion: "Inserción paralela con 8 goroutines (método original)",
-		},
 	}
 
 	resultados := make([]struct {
@@ -192,13 +156,6 @@ func main() {
 		}
 	}
 
-	fmt.Println()
-	fmt.Println("🎯 Recomendaciones para producción:")
-	fmt.Println("   1. Usar la estrategia más rápida según resultados")
-	fmt.Println("   2. Monitorear uso de memoria y CPU")
-	fmt.Println("   3. Ajustar configuración de PostgreSQL según hardware")
-	fmt.Println("   4. Considerar particionamiento para tablas > 10M registros")
-	fmt.Println("   5. Implementar carga incremental para actualizaciones")
 }
 
 // getMemoryInfo obtiene información básica de memoria (simplificado)
