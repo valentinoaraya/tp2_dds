@@ -112,7 +112,7 @@ func (r *Repository) CrearAlumnosBatchConUnInsert(alumnos []*models.Alumno) erro
 	defer tx.Rollback()
 
 	query := `INSERT INTO alumnos (apellido, nombre, nro_documento, tipo_documento, fecha_nacimiento, sexo, nro_legajo, fecha_ingreso) VALUES `
-	valores := []interface{}{}
+	valores := []any{}
 
 	for i, alumno := range alumnos {
 		n := i * 8

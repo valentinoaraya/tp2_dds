@@ -13,6 +13,8 @@ import (
 
 func main() {
 
+	rutaArchivo := "data/alumnos.csv"
+
 	fmt.Println("🚀 Iniciando carga masiva de alumnos...")
 	fmt.Println("=====================================")
 
@@ -44,59 +46,33 @@ func main() {
 		descripcion string
 	}{
 		{
-			nombre: "Persitencia con Múltiples Inserts (Batch de 1000)",
+			nombre: "Streaming de alumnos (16 workers, 5000 batch) Usando COPY",
 			funcion: func() error {
-				return service.CargarAlumnosBatch(alumnos, 1000, "multiplesInserts")
+				return service.CargarAlumnosStreaming(rutaArchivo, 5000, 16, "copy")
 			},
-			descripcion: "Inserción por Batch de 1000 registros con múltiples inserts",
 		},
 		{
-			nombre: "Persistencia con Inserción por Lotes (Batch de 1000)",
+			nombre: "Streaming de alumnos (16 workers, 5000 batch) Usando Un solo Insert",
 			funcion: func() error {
-				return service.CargarAlumnosBatch(alumnos, 1000, "unInsert")
+				return service.CargarAlumnosStreaming(rutaArchivo, 5000, 16, "unInsert")
 			},
-			descripcion: "Inserción por Batch de 1000 registros con un solo insert",
 		},
 		{
-			nombre: "Persistencia con COPY (Batch de 1000)",
+			nombre: "Streaming de alumnos (16 workers, 5000 batch) Usando multiples Inserts",
 			funcion: func() error {
-				return service.CargarAlumnosBatch(alumnos, 1000, "copy")
+				return service.CargarAlumnosStreaming(rutaArchivo, 5000, 16, "multiplesInserts")
 			},
-			descripcion: "Inserción por Batch de 1000 registros con COPY",
-		},
-		{
-			nombre: "Paralelo (8 goroutines, 1000 registros) Usando Múltiples Inserts",
-			funcion: func() error {
-				return service.CargarAlumnosParalelo(alumnos, 1000, 8, "multiplesInserts")
-			},
-			descripcion: "Inserción paralela con 8 goroutines utilizando múltiples inserts",
-		},
-		{
-			nombre: "Paralelo (8 goroutines, 1000 registros) Usando Un Solo Insert",
-			funcion: func() error {
-				return service.CargarAlumnosParalelo(alumnos, 1000, 8, "unInsert")
-			},
-			descripcion: "Inserción paralela con 8 goroutines utilizando un solo insert",
-		},
-		{
-			nombre: "Paralelo (8 goroutines, 1000 registros) Usando COPY",
-			funcion: func() error {
-				return service.CargarAlumnosParalelo(alumnos, 1000, 8, "copy")
-			},
-			descripcion: "Inserción paralela con 8 goroutines utilizando COPY",
 		},
 	}
 
 	resultados := make([]struct {
-		nombre      string
-		tiempo      time.Duration
-		descripcion string
-		error       error
+		nombre string
+		tiempo time.Duration
+		error  error
 	}, 0, len(estrategias))
 
 	for _, estrategia := range estrategias {
 		fmt.Printf("🔄 Ejecutando: %s\n", estrategia.nombre)
-		fmt.Printf("   %s\n", estrategia.descripcion)
 
 		if err := repo.LimpiarTablaAlumnos(); err != nil {
 			log.Printf("Error limpiando tabla: %v", err)
@@ -113,15 +89,13 @@ func main() {
 		}
 
 		resultados = append(resultados, struct {
-			nombre      string
-			tiempo      time.Duration
-			descripcion string
-			error       error
+			nombre string
+			tiempo time.Duration
+			error  error
 		}{
-			nombre:      estrategia.nombre,
-			tiempo:      duracion,
-			descripcion: estrategia.descripcion,
-			error:       err,
+			nombre: estrategia.nombre,
+			tiempo: duracion,
+			error:  err,
 		})
 
 		if err != nil {

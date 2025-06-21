@@ -170,3 +170,99 @@ func (s *AlumnoService) CargarAlumnosParalelo(alumnos []*models.Alumno, tamanoBa
 
 	return nil
 }
+
+func (s *AlumnoService) CargarAlumnosStreaming(rutaArchivo string, tamanoBatch int, numGoroutines int, tipoPersistencia string) error {
+	archivo, err := os.Open(rutaArchivo)
+	if err != nil {
+		return fmt.Errorf("error abriendo archivo CSV: %v", err)
+	}
+	defer archivo.Close()
+
+	alumnosChan := make(chan []*models.Alumno, numGoroutines*2)
+	errorChan := make(chan error, numGoroutines)
+	var wg sync.WaitGroup
+
+	for i := 0; i < numGoroutines; i++ {
+		wg.Add(1)
+		go func(workerID int) {
+			defer wg.Done()
+			for batch := range alumnosChan {
+
+				if tipoPersistencia == "multiplesInserts" {
+					if err := s.repo.CrearAlumnosBatchConMultiplesInserts(batch); err != nil {
+						errorChan <- fmt.Errorf("worker %d error: %v", workerID, err)
+						return
+					}
+				} else if tipoPersistencia == "unInsert" {
+					if err := s.repo.CrearAlumnosBatchConUnInsert(batch); err != nil {
+						errorChan <- fmt.Errorf("worker %d error: %v", workerID, err)
+						return
+					}
+				} else if tipoPersistencia == "copy" {
+					if err := s.repo.CrearAlumnosBatchConCopy(batch); err != nil {
+						errorChan <- fmt.Errorf("worker %d error: %v", workerID, err)
+						return
+					}
+				}
+			}
+		}(i)
+	}
+
+	lector := csv.NewReader(archivo)
+	lector.FieldsPerRecord = -1
+
+	if _, err := lector.Read(); err != nil {
+		return nil
+	}
+
+	var batch []*models.Alumno
+	registrosProcesados := 0
+
+	for {
+		registro, err := lector.Read()
+		if err != nil {
+			if err.Error() == "EOF" {
+				break
+			}
+			log.Printf("Error leyendo registro: %v", err)
+			continue
+		}
+
+		alumno, err := s.ParsearAlumno(registro)
+		if err != nil {
+			log.Printf("Error parseando registro: %v", err)
+			continue
+		}
+
+		batch = append(batch, alumno)
+		registrosProcesados++
+
+		if len(batch) >= tamanoBatch {
+			select {
+			case err := <-errorChan:
+				return err
+			case alumnosChan <- batch:
+				batch = make([]*models.Alumno, 0, tamanoBatch)
+			}
+		}
+	}
+
+	if len(batch) > 0 {
+		select {
+		case err := <-errorChan:
+			return err
+		case alumnosChan <- batch:
+		}
+	}
+
+	close(alumnosChan)
+	wg.Wait()
+
+	select {
+	case err := <-errorChan:
+		return err
+	default:
+	}
+
+	return nil
+}
