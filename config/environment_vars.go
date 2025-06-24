@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"path/filepath"
@@ -48,5 +49,5 @@ func Init() {
 	DB_PORT = os.Getenv("DB_PORT")
 	CONTAINER_PORT = os.Getenv("CONTAINER_PORT")
 	DB_SSL_MODE = os.Getenv("DB_SSL_MODE")
-	Url_connection = "postgres://" + DB_USER + ":" + DB_PASSWORD + "@" + DB_HOST + ":" + CONTAINER_PORT + "/" + DB_NAME + "?sslmode=" + DB_SSL_MODE
+	Url_connection = fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=%s", DB_HOST, DB_USER, DB_PASSWORD, DB_NAME, CONTAINER_PORT, DB_SSL_MODE)
 }

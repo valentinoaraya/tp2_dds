@@ -19,33 +19,6 @@ func TestAlumnoService(t *testing.T) {
 
 	service := services.NewAlumnoService(repo)
 
-	t.Run("Crear instancia alumno", func(t *testing.T) {
-		err = service.CrearAlumno(&InstanciaAlumno)
-
-		if err != nil {
-			t.Errorf("Error al crear el alumno: %v", err)
-		}
-
-		err = repo.LimpiarTablaAlumnos()
-
-		if err != nil {
-			t.Errorf("Error al limpiar la tabla alumnos: %v", err)
-		}
-	})
-
-	t.Run("Obtener alumnos desde el CSV", func(t *testing.T) {
-		alumnos, err := service.ObtenerAlumnosDesdeCSV("../data/alumnos.csv")
-
-		if err != nil {
-			t.Errorf("Error al obtener alumnos desde el CSV: %d", err)
-		}
-
-		if len(alumnos) <= 0 {
-			t.Errorf("No se ha obtenido ningún alumno del archivo.")
-		}
-
-	})
-
 	t.Run("Parsear un registro a un Alumno", func(t *testing.T) {
 
 		registro := []string{
@@ -70,65 +43,6 @@ func TestAlumnoService(t *testing.T) {
 		}
 	})
 
-	t.Run("Cargar un batch de alumnos", func(t *testing.T) {
-		var metodosPersistencia = []string{"multiplesInserts", "unInsert", "copy"}
-
-		for _, metodo := range metodosPersistencia {
-			t.Run("Cargar alumnos con "+metodo, func(t *testing.T) {
-				err := service.CargarAlumnosBatch(Alumnos, len(Alumnos), metodo)
-
-				if err != nil {
-					t.Errorf("Error al cargar alumnos con %s: %v", metodo, err)
-				}
-
-				cantidad, err := repo.ObtenerCantidadAlumnos()
-				if err != nil {
-					t.Errorf("Error al obtener cantidad de alumnos: %v", err)
-				}
-
-				esperado := len(Alumnos)
-				if cantidad != esperado {
-					t.Errorf("Se esperaban %d alumnos, pero se encontraron %d", esperado, cantidad)
-				}
-
-				err = repo.LimpiarTablaAlumnos()
-				if err != nil {
-					t.Errorf("Error al limpiar la tabla: %v", err)
-				}
-			})
-		}
-	})
-
-	t.Run("Cargar alumnos en paralelos", func(t *testing.T) {
-
-		var metodosPersistencia = []string{"multiplesInserts", "unInsert", "copy"}
-
-		for _, metodo := range metodosPersistencia {
-			t.Run("Cargar alumnos con "+metodo, func(t *testing.T) {
-				err := service.CargarAlumnosParalelo(Alumnos, len(Alumnos), 4, metodo)
-
-				if err != nil {
-					t.Errorf("Error al cargar alumnos con %s: %v", metodo, err)
-				}
-
-				cantidad, err := repo.ObtenerCantidadAlumnos()
-				if err != nil {
-					t.Errorf("Error al obtener cantidad de alumnos: %v", err)
-				}
-
-				esperado := len(Alumnos)
-				if cantidad != esperado {
-					t.Errorf("Se esperaban %d alumnos, pero se encontraron %d", esperado, cantidad)
-				}
-
-				err = repo.LimpiarTablaAlumnos()
-				if err != nil {
-					t.Errorf("Error al limpiar la tabla: %v", err)
-				}
-			})
-		}
-	})
-
 	t.Run("Cargar alumnos con Streaming de datos", func(t *testing.T) {
 		// Crear un archivo CSV de prueba pequeño
 		testCSVPath := "../data/test_alumnos.csv"
@@ -148,36 +62,31 @@ func TestAlumnoService(t *testing.T) {
 		}
 		defer os.Remove(testCSVPath)
 
-		var metodosPersistencia = []string{"multiplesInserts", "unInsert", "copy"}
-
-		for _, metodo := range metodosPersistencia {
-			t.Run("Cargar alumnos con "+metodo, func(t *testing.T) {
-				err := repo.LimpiarTablaAlumnos()
-				if err != nil {
-					t.Fatalf("Error al limpiar la tabla: %v", err)
-				}
-
-				err = service.CargarAlumnosStreaming(testCSVPath, 3, 2, metodo)
-
-				if err != nil {
-					t.Errorf("Error al cargar alumnos con %s: %v", metodo, err)
-				}
-
-				cantidad, err := repo.ObtenerCantidadAlumnos()
-				if err != nil {
-					t.Errorf("Error al obtener cantidad de alumnos: %v", err)
-				}
-
-				esperado := 8
-				if cantidad != esperado {
-					t.Errorf("Se esperaban %d alumnos, pero se encontraron %d", esperado, cantidad)
-				}
-
-				err = repo.LimpiarTablaAlumnos()
-				if err != nil {
-					t.Errorf("Error al limpiar la tabla: %v", err)
-				}
-			})
+		err = repo.LimpiarTablaAlumnos()
+		if err != nil {
+			t.Fatalf("Error al limpiar la tabla: %v", err)
 		}
+
+		err = service.CargarAlumnosStreaming(testCSVPath, 3, 2)
+
+		if err != nil {
+			t.Errorf("Error al cargar alumnos: %v", err)
+		}
+
+		cantidad, err := repo.ObtenerCantidadAlumnos()
+		if err != nil {
+			t.Errorf("Error al obtener cantidad de alumnos: %v", err)
+		}
+
+		esperado := 8
+		if cantidad != esperado {
+			t.Errorf("Se esperaban %d alumnos, pero se encontraron %d", esperado, cantidad)
+		}
+
+		err = repo.LimpiarTablaAlumnos()
+		if err != nil {
+			t.Errorf("Error al limpiar la tabla: %v", err)
+		}
+
 	})
 }
